@@ -73,6 +73,7 @@ int measure(char *test, char *name, char *size, testfunc fp, void *up, int ups) 
 	return 0;
 }
 
+__attribute__ ((visibility("default")))
 int measure_multi(char *test, char *name, char *size, testfunc fp, void ***up, 
 		int ups) {
 	int res;
