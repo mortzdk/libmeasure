@@ -16,7 +16,6 @@
 #include "measure.h"
 
 __attribute__ ((visibility("default"))) int N_EVENTS = 11;
-__attribute__ ((visibility("default"))) extern void ***cleanup;
 int          **events;
 
 __attribute__ ((visibility("default")))
@@ -74,8 +73,64 @@ int measure(char *test, char *name, char *size, testfunc fp, void *up, int ups) 
 	return 0;
 }
 
+int measure_multi(char *test, char *name, char *size, testfunc fp, void ***up, 
+		int ups) {
+	int res;
+	uint8_t i, j;
+	uint64_t total_ns, total_s;
+	struct timespec begin, end;
+	bool timemeasured = false;
+	long long meas[2] = {0, 0};
+
+	printf("%s,%s,%s", test, name, size);
+
+	for (i = 0; i < N_EVENTS; i++) {
+		if (!timemeasured) {
+			clock_gettime(CLOCK_REALTIME, &begin);
+		}
+
+		if ((res = PAPI_start_counters(&events[i][1], events[i][0])) != PAPI_OK) {
+			for (j = 1; j <= events[i][0]; j++) {
+				printf(",0");
+			}
+			continue;
+		};
+
+		for (j = 0; j < ups; j++) {
+			(fp)(up[i][j]);
+		}
+
+		PAPI_stop_counters(meas, events[i][0]);
+
+		if (!timemeasured) {
+			clock_gettime(CLOCK_REALTIME, &end);
+
+			if (begin.tv_nsec <= end.tv_nsec) {
+				total_ns = end.tv_nsec - begin.tv_nsec;
+				total_s  = end.tv_sec  - begin.tv_sec;
+			} else {
+				total_ns = end.tv_nsec + (1e9 - begin.tv_nsec);
+				total_s  = end.tv_sec - begin.tv_sec - 1;
+			}
+
+			uint64_t total = total_s * 1e9 + total_ns;
+			printf(",%f", (double)total/ups);
+			timemeasured = true;
+		}
+
+		for (j = 1; j <= events[i][0]; j++) {
+			printf(",%lld", meas[j-1]/ups);
+		}
+	}
+
+	printf("\n");
+
+	return 0;
+}
+
 __attribute__ ((visibility("default")))
-int measure_clean(char *test, char *name, char *size, testfunc fp, void ***up, int ups) {
+int measure_multi_cleanup(char *test, char *name, char *size, testfunc fp, void ***up, 
+		int ups, void ***cleanup) {
 	int res;
 	uint8_t i, j;
 	uint64_t total_ns, total_s;
