@@ -74,7 +74,7 @@ int measure(char *test, char *name, char *size, testfunc fp, void *up, int ups) 
 }
 
 __attribute__ ((visibility("default")))
-int measure_multi(char *test, char *name, char *size, testfunc fp, void ***up, 
+int measure_multi(char *test, char *name, char *size, testfunc fp, void **up, 
 		int ups) {
 	int res;
 	uint8_t i, j;
@@ -98,7 +98,7 @@ int measure_multi(char *test, char *name, char *size, testfunc fp, void ***up,
 		};
 
 		for (j = 0; j < ups; j++) {
-			(fp)(up[i][j]);
+			(fp)(up[MEASURE_IDX(N_EVENTS, i, j)]);
 		}
 
 		PAPI_stop_counters(meas, events[i][0]);
@@ -130,8 +130,8 @@ int measure_multi(char *test, char *name, char *size, testfunc fp, void ***up,
 }
 
 __attribute__ ((visibility("default")))
-int measure_multi_cleanup(char *test, char *name, char *size, testfunc fp, void ***up, 
-		int ups, void ***cleanup) {
+int measure_multi_cleanup(char *test, char *name, char *size, testfunc fp, 
+		void **up, int ups, void **cleanup) {
 	int res;
 	uint8_t i, j;
 	uint64_t total_ns, total_s;
@@ -154,7 +154,8 @@ int measure_multi_cleanup(char *test, char *name, char *size, testfunc fp, void 
 		};
 
 		for (j = 0; j < ups; j++) {
-			cleanup[i][j] = (fp)(up[i][j]);
+			cleanup[MEASURE_IDX(N_EVENTS, i, j)] = 
+				(fp)(up[MEASURE_IDX(N_EVENTS, i, j)]);
 		}
 
 		PAPI_stop_counters(meas, events[i][0]);
