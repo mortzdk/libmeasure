@@ -196,7 +196,7 @@ measure_init() {
 
 	if (events == NULL) {
 		fprintf(stderr, "Error %d@%s: Unable to allocate PAPI events\n", __LINE__, __FILE__);
-		exit(EXIT_FAILURE);
+		return 0;
 	}
 
 	for (i = 0; i < N_EVENTS; i++) {
