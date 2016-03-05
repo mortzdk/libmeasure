@@ -98,7 +98,7 @@ int measure_multi(char *test, char *name, char *size, testfunc fp, void **up,
 		};
 
 		for (j = 0; j < ups; j++) {
-			(fp)(up[MEASURE_IDX(N_EVENTS, i, j)]);
+			(fp)(up[MEASURE_IDX(ups, i, j)]);
 		}
 
 		PAPI_stop_counters(meas, events[i][0]);
@@ -154,8 +154,8 @@ int measure_multi_cleanup(char *test, char *name, char *size, testfunc fp,
 		};
 
 		for (j = 0; j < ups; j++) {
-			cleanup[MEASURE_IDX(N_EVENTS, i, j)] = 
-				(fp)(up[MEASURE_IDX(N_EVENTS, i, j)]);
+			cleanup[MEASURE_IDX(ups, i, j)] = 
+				(fp)(up[MEASURE_IDX(ups, i, j)]);
 		}
 
 		PAPI_stop_counters(meas, events[i][0]);
