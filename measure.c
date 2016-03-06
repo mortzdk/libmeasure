@@ -15,28 +15,44 @@
 
 #include "measure.h"
 
-__attribute__ ((visibility("default"))) int N_EVENTS = 11;
-int          **events;
+#define NUMBER_OF_EVENTS 12
+#define MAX_COUNTERS     2
+
+__attribute__ ((visibility("default"))) 
+const int N_EVENTS                  = NUMBER_OF_EVENTS;
+static int events[NUMBER_OF_EVENTS+1][MAX_COUNTERS+1];
+static long long meas[MAX_COUNTERS] = {0, 0};
+static int event_set                = PAPI_NULL;
 
 __attribute__ ((visibility("default")))
 int measure(char *test, char *name, char *size, testfunc fp, void *up, int ups) {
-	int res; 
 	uint8_t  i, j;
-	uint64_t total_ns, total_s;
+	uint64_t total_ns, total_s, total;
 	struct timespec begin, end;
-	bool timemeasured = false; 
-	long long meas[2] = {0, 0};
+	bool time = false; 
+	bool wu   = false;
 
 	printf("%s,%s,%s", test, name, size);
 
-	for (i = 0; i < N_EVENTS; i++) {
-		if (!timemeasured) {
+	for (i = 0; i <= N_EVENTS; i++) {
+		if ( PAPI_add_events(event_set, &events[i-wu][1], events[i-wu][0]) ) {
+			if ( wu ) {
+				for (j = 1; j <= events[i-wu][0]; j++) {
+					printf(",0");
+				}
+			}
+			continue;
+		}
+
+		if ( !time ) {
 			clock_gettime(CLOCK_REALTIME, &begin);
 		}
 
-		if ((res = PAPI_start_counters(&events[i][1], events[i][0])) != PAPI_OK) {
-			for (j = 1; j <= events[i][0]; j++) {
-				printf(",0");
+		if ( PAPI_start(event_set) != PAPI_OK ) {
+			if ( wu ) {
+				for (j = 1; j <= events[i-wu][0]; j++) {
+					printf(",0");
+				}
 			}
 			continue;
 		};
@@ -45,9 +61,9 @@ int measure(char *test, char *name, char *size, testfunc fp, void *up, int ups) 
 			(fp)(up);
 		}
 
-		PAPI_stop_counters(meas, events[i][0]);
+		PAPI_stop(event_set, meas);
 
-		if (!timemeasured) {
+		if ( !time ) {
 			clock_gettime(CLOCK_REALTIME, &end);
 
 			if (begin.tv_nsec <= end.tv_nsec) {
@@ -58,41 +74,65 @@ int measure(char *test, char *name, char *size, testfunc fp, void *up, int ups) 
 				total_s  = end.tv_sec - begin.tv_sec - 1;
 			}
 
-			uint64_t total = total_s * 1e9 + total_ns;
-			printf(",%f", (double)total/ups);
-			timemeasured = true;
+			total = total_s * 1e9 + total_ns;
+			if ( wu ) {
+				printf(",%f", (double)total/ups);
+				time = true;
+			}
 		}
 
-		for (j = 1; j <= events[i][0]; j++) {
-			printf(",%lld", meas[j-1]/ups);
+		if ( wu ) {
+			for (j = 1; j <= events[i-wu][0]; j++) {
+				printf(",%lld", meas[j-1]/ups);
+			}
 		}
+
+		if ( PAPI_remove_events(event_set, &events[i-wu][1], events[i-wu][0]) ) {
+			return 0;
+		}
+
+		wu = true;
 	}
 
 	printf("\n");
 
-	return 0;
+	return 1;
 }
 
 __attribute__ ((visibility("default")))
-int measure_multi(char *test, char *name, char *size, testfunc fp, void **up, 
-		int ups) {
-	int res;
-	uint8_t i, j;
-	uint64_t total_ns, total_s;
+int measure_with_sideeffects(char *test, char *name, char *size, testfunc fp, 
+		void **up, int ups) {
+	uint8_t  i, j;
+	uint64_t total_ns, total_s, total;
 	struct timespec begin, end;
-	bool timemeasured = false;
-	long long meas[2] = {0, 0};
+	bool time = false; 
+	bool wu   = false;
 
 	printf("%s,%s,%s", test, name, size);
 
-	for (i = 0; i < N_EVENTS; i++) {
-		if (!timemeasured) {
+	if ( PAPI_create_eventset(&event_set) != PAPI_OK) {
+		return 0;
+	}
+
+	for (i = 0; i <= N_EVENTS; i++) {
+		if ( PAPI_add_events(event_set, &events[i-wu][1], events[i-wu][0]) ) {
+			if ( wu ) {
+				for (j = 1; j <= events[i-wu][0]; j++) {
+					printf(",0");
+				}
+			}
+			continue;
+		}
+
+		if ( !time ) {
 			clock_gettime(CLOCK_REALTIME, &begin);
 		}
 
-		if ((res = PAPI_start_counters(&events[i][1], events[i][0])) != PAPI_OK) {
-			for (j = 1; j <= events[i][0]; j++) {
-				printf(",0");
+		if ( PAPI_start(event_set) != PAPI_OK ) {
+			if ( wu ) {
+				for (j = 1; j <= events[i-wu][0]; j++) {
+					printf(",0");
+				}
 			}
 			continue;
 		};
@@ -101,9 +141,9 @@ int measure_multi(char *test, char *name, char *size, testfunc fp, void **up,
 			(fp)(up[MEASURE_IDX(ups, i, j)]);
 		}
 
-		PAPI_stop_counters(meas, events[i][0]);
+		PAPI_stop(event_set, meas);
 
-		if (!timemeasured) {
+		if ( !time ) {
 			clock_gettime(CLOCK_REALTIME, &end);
 
 			if (begin.tv_nsec <= end.tv_nsec) {
@@ -114,41 +154,70 @@ int measure_multi(char *test, char *name, char *size, testfunc fp, void **up,
 				total_s  = end.tv_sec - begin.tv_sec - 1;
 			}
 
-			uint64_t total = total_s * 1e9 + total_ns;
-			printf(",%f", (double)total/ups);
-			timemeasured = true;
+			total = total_s * 1e9 + total_ns;
+			if ( wu ) {
+				printf(",%f", (double)total/ups);
+				time = true;
+			}
 		}
 
-		for (j = 1; j <= events[i][0]; j++) {
-			printf(",%lld", meas[j-1]/ups);
+		if ( wu ) {
+			for (j = 1; j <= events[i-wu][0]; j++) {
+				printf(",%lld", meas[j-1]/ups);
+			}
 		}
+
+		if ( PAPI_remove_events(event_set, &events[i-wu][1], events[i-wu][0]) ) {
+			return 0;
+		}
+
+		wu = true;
+	}
+
+	if ( PAPI_cleanup_eventset(event_set) != PAPI_OK ) {
+		return 0;
+	}
+
+	if ( PAPI_destroy_eventset(&event_set) != PAPI_OK ) {
+		return 0;
 	}
 
 	printf("\n");
 
-	return 0;
+	return 1;
 }
 
 __attribute__ ((visibility("default")))
-int measure_multi_cleanup(char *test, char *name, char *size, testfunc fp, 
-		void **up, int ups, void **cleanup) {
-	int res;
-	uint8_t i, j;
-	uint64_t total_ns, total_s;
+int measure_with_sideeffects_and_memory(char *test, char *name, char *size, 
+		testfunc fp, void **up, int ups, void **cleanup) {
+	uint8_t  i, j;
+	uint64_t total_ns, total_s, total;
 	struct timespec begin, end;
-	bool timemeasured = false;
-	long long meas[2] = {0, 0};
+	bool time = false; 
+	bool wu   = false;
 
 	printf("%s,%s,%s", test, name, size);
 
-	for (i = 0; i < N_EVENTS; i++) {
-		if (!timemeasured) {
+
+	for (i = 0; i <= N_EVENTS; i++) {
+		if ( PAPI_add_events(event_set, &events[i-wu][1], events[i-wu][0]) ) {
+			if ( wu ) {
+				for (j = 1; j <= events[i-wu][0]; j++) {
+					printf(",0");
+				}
+			}
+			continue;
+		}
+
+		if ( !time ) {
 			clock_gettime(CLOCK_REALTIME, &begin);
 		}
 
-		if ((res = PAPI_start_counters(&events[i][1], events[i][0])) != PAPI_OK) {
-			for (j = 1; j <= events[i][0]; j++) {
-				printf(",0");
+		if ( PAPI_start(event_set) != PAPI_OK ) {
+			if ( wu ) {
+				for (j = 1; j <= events[i-wu][0]; j++) {
+					printf(",0");
+				}
 			}
 			continue;
 		};
@@ -158,9 +227,9 @@ int measure_multi_cleanup(char *test, char *name, char *size, testfunc fp,
 				(fp)(up[MEASURE_IDX(ups, i, j)]);
 		}
 
-		PAPI_stop_counters(meas, events[i][0]);
+		PAPI_stop(event_set, meas);
 
-		if (!timemeasured) {
+		if ( !time ) {
 			clock_gettime(CLOCK_REALTIME, &end);
 
 			if (begin.tv_nsec <= end.tv_nsec) {
@@ -171,67 +240,61 @@ int measure_multi_cleanup(char *test, char *name, char *size, testfunc fp,
 				total_s  = end.tv_sec - begin.tv_sec - 1;
 			}
 
-			uint64_t total = total_s * 1e9 + total_ns;
-			printf(",%f", (double)total/ups);
-			timemeasured = true;
+			total = total_s * 1e9 + total_ns;
+			if ( wu ) {
+				printf(",%f", (double)total/ups);
+				time = true;
+			}
 		}
 
-		for (j = 1; j <= events[i][0]; j++) {
-			printf(",%lld", meas[j-1]/ups);
+		if ( wu ) {
+			for (j = 1; j <= events[i-wu][0]; j++) {
+				printf(",%lld", meas[j-1]/ups);
+			}
 		}
+
+		if ( PAPI_remove_events(event_set, &events[i-wu][1], events[i-wu][0]) ) {
+			return 0;
+		}
+
+		wu = true;
 	}
 
 	printf("\n");
 
-	return 0;
+	return 1;
 }
 
 __attribute__ ((visibility("default")))
-int
-measure_init() {
-	int res;
+int measure_init() {
 	uint8_t i, j;
 	char buf[1024];
 	
-	events = malloc(N_EVENTS*sizeof(int *));
-
-	if (events == NULL) {
-		fprintf(stderr, "Error %d@%s: Unable to allocate PAPI events\n", __LINE__, __FILE__);
-		return 0;
-	}
-
-	for (i = 0; i < N_EVENTS; i++) {
-		events[i] = calloc(sizeof(int), 6);
-		if (events[i] == NULL) {
-			return 0;
-		}
-	}
-
-	events[0][0] = 2;
+	events[0][0] = MAX_COUNTERS;
 	events[0][1] = PAPI_TOT_INS;
 	events[0][2] = PAPI_TOT_CYC;
 
-	events[1][0] = 2;
+	events[1][0] = MAX_COUNTERS;
 	events[1][1] = PAPI_BR_NTK;
 	events[1][2] = PAPI_BR_TKN;
 
-	events[2][0] = 2;
+	events[2][0] = MAX_COUNTERS;
 	events[2][1] = PAPI_BR_MSP;
 	events[2][2] = PAPI_BR_PRC;
 
-	events[3][0] = 2;
+	events[3][0] = MAX_COUNTERS;
 	events[3][1] = PAPI_L1_DCM;
 	events[3][2] = PAPI_L1_ICM;
 
-	events[3][0] = 2;
+	events[3][0] = MAX_COUNTERS;
 	events[3][1] = PAPI_L1_DCM;
 	events[3][2] = PAPI_L1_ICM;
 
-	events[4][0] = 2;
+	events[4][0] = MAX_COUNTERS;
 	events[4][1] = PAPI_L2_DCM;
 	events[4][2] = PAPI_L2_ICM;
 
-	events[5][0] = 2;
+	events[5][0] = MAX_COUNTERS;
 	events[5][1] = PAPI_TLB_DM;
 	events[5][2] = PAPI_TLB_IM;
 
@@ -251,12 +314,11 @@ measure_init() {
 	events[10][1] = PAPI_REF_CYC;
 
 
-	if ( (res = PAPI_library_init(PAPI_VER_CURRENT)) != PAPI_VER_CURRENT) {
-		fprintf(stderr, "Unable to initialize PAPI: %s\n", PAPI_strerror(res));
+	if ( PAPI_library_init(PAPI_VER_CURRENT) != PAPI_VER_CURRENT) {
 		return 0;
 	}
 
-	printf("Test,Name,Size,Nanoseconds");
+	printf("Test,Name,Method,Nanoseconds");
 	for (i = 0; i < N_EVENTS; i++) {
 		for (j = 1; j <= events[i][0]; j++) {
 			PAPI_event_code_to_name(events[i][j], buf);
@@ -265,20 +327,23 @@ measure_init() {
 	}
 	printf("\n");
 
+	if ( PAPI_create_eventset(&event_set) != PAPI_OK) {
+		return 0;
+	}
+
 	return 1;
 }
 
 __attribute__ ((visibility("default")))
-void measure_destroy() {
-	uint8_t i;
-
-	for (i = 0; i < N_EVENTS; i++) {
-		if (NULL != events[i]) {
-			free(events[i]);
-		}
+int measure_destroy() {
+	if ( PAPI_cleanup_eventset(event_set) != PAPI_OK ) {
+		return 0;
 	}
 
-	free(events);
+	if ( PAPI_destroy_eventset(&event_set) != PAPI_OK ) {
+		return 0;
+	}
 
 	PAPI_shutdown();
+	return 1;
 }

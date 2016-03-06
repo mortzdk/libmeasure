@@ -3,7 +3,7 @@
 
 #include <inttypes.h>
 
-#define MEASURE_IDX(WIDTH, x, y) (WIDTH * x) + y
+#define MEASURE_IDX(WIDTH, x, y) ((WIDTH) * (x)) + (y)
 
 // Testfunction is the argument that needs to be tested. Should only take a
 // single argument.
@@ -16,5 +16,5 @@ int measure_multi(char *test, char* name, char *testfile, testfunc fp,
 		void **up, int ups);
 int measure_multi_cleanup(char *test, char* name, char *testfile, testfunc fp, 
 		void **up, int ups, void **cleanup);
-void measure_destroy();
+int measure_destroy();
 #endif
