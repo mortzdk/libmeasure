@@ -188,7 +188,7 @@ int measure_with_sideeffects(char *test, char *name, char *size, testfunc fp,
 }
 
 __attribute__ ((visibility("default")))
-int measure_with_sideeffects_and_memory(char *test, char *name, char *size, 
+int measure_with_sideeffects_and_values(char *test, char *name, char *size, 
 		testfunc fp, void **up, int ups, void **cleanup) {
 	uint8_t  i, j;
 	uint64_t total_ns, total_s, total;

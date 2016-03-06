@@ -12,9 +12,9 @@ typedef void *(*testfunc)(void *, ...);
 int measure_init();
 int measure(char *test, char *name, char *testfile, testfunc fp, void *up, 
 		int ups);
-int measure_multi(char *test, char* name, char *testfile, testfunc fp, 
-		void **up, int ups);
-int measure_multi_cleanup(char *test, char* name, char *testfile, testfunc fp, 
-		void **up, int ups, void **cleanup);
+int measure_with_sideeffects(char *test, char* name, char *testfile, 
+		testfunc fp, void **up, int ups);
+int measure_with_sideeffects_and_values(char *test, char* name, char *testfile, 
+		testfunc fp, void **up, int ups, void **cleanup);
 int measure_destroy();
 #endif
