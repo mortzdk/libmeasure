@@ -15,11 +15,11 @@
 
 #include "measure.h"
 
-#define NUMBER_OF_EVENTS 12
+#define NUMBER_OF_EVENTS 11
 #define MAX_COUNTERS     2
 
 __attribute__ ((visibility("default"))) 
-const int N_EVENTS                  = NUMBER_OF_EVENTS;
+const int N_EVENTS                  = NUMBER_OF_EVENTS+1;
 static int events[NUMBER_OF_EVENTS+1][MAX_COUNTERS+1];
 static long long meas[MAX_COUNTERS] = {0, 0};
 static int event_set                = PAPI_NULL;
@@ -30,32 +30,36 @@ int measure(char *test, char *name, char *size, testfunc fp, void *up, int ups) 
 	uint64_t total_ns, total_s, total;
 	struct timespec begin, end;
 	bool time = false; 
-	bool wu   = false;
+	bool warmedup   = false;
+	bool OK  = true;
 
 	printf("%s,%s,%s", test, name, size);
 
 	for (i = 0; i <= N_EVENTS; i++) {
-		if ( PAPI_add_events(event_set, &events[i-wu][1], events[i-wu][0]) ) {
-			if ( wu ) {
-				for (j = 1; j <= events[i-wu][0]; j++) {
-					printf(",0");
+
+		for (j = 1; j <= events[i-warmedup][0]; j++) {
+			meas[j-1] = 0;
+			if ( PAPI_query_event(events[i-warmedup][j]) != PAPI_OK ) {
+				OK = false;
+			}
+		}
+
+		if ( !OK ) {
+			for (j = 1; j <= events[i-warmedup][0]; j++) {
+				if ( warmedup ) {
+					printf(",-");
 				}
 			}
 			continue;
 		}
+
+		PAPI_add_events(event_set, &events[i-warmedup][1], events[i-warmedup][0]);
 
 		if ( !time ) {
 			clock_gettime(CLOCK_REALTIME, &begin);
 		}
 
-		if ( PAPI_start(event_set) != PAPI_OK ) {
-			if ( wu ) {
-				for (j = 1; j <= events[i-wu][0]; j++) {
-					printf(",0");
-				}
-			}
-			continue;
-		};
+		PAPI_start(event_set);
 
 		for (j = 0; j < ups; j++) {
 			(fp)(up);
@@ -75,23 +79,21 @@ int measure(char *test, char *name, char *size, testfunc fp, void *up, int ups) 
 			}
 
 			total = total_s * 1e9 + total_ns;
-			if ( wu ) {
+			if ( warmedup ) {
 				printf(",%f", (double)total/ups);
 				time = true;
 			}
 		}
 
-		if ( wu ) {
-			for (j = 1; j <= events[i-wu][0]; j++) {
+		if ( warmedup ) {
+			for (j = 1; j <= events[i-warmedup][0]; j++) {
 				printf(",%lld", meas[j-1]/ups);
 			}
 		}
 
-		if ( PAPI_remove_events(event_set, &events[i-wu][1], events[i-wu][0]) ) {
-			return 0;
-		}
+		PAPI_cleanup_eventset(event_set);
 
-		wu = true;
+		warmedup = true;
 	}
 
 	printf("\n");
@@ -100,42 +102,42 @@ int measure(char *test, char *name, char *size, testfunc fp, void *up, int ups) 
 }
 
 __attribute__ ((visibility("default")))
-int measure_with_sideeffects(char *test, char *name, char *size, testfunc fp, 
-		void **up, int ups) {
+int measure_with_sideeffects(char *test, char *name, char *size, 
+		testfunc fp, void **up, int ups) {
 	uint8_t  i, j;
 	uint64_t total_ns, total_s, total;
 	struct timespec begin, end;
 	bool time = false; 
-	bool wu   = false;
+	bool warmedup   = false;
+	bool OK   = true;
 
 	printf("%s,%s,%s", test, name, size);
 
-	if ( PAPI_create_eventset(&event_set) != PAPI_OK) {
-		return 0;
-	}
-
 	for (i = 0; i <= N_EVENTS; i++) {
-		if ( PAPI_add_events(event_set, &events[i-wu][1], events[i-wu][0]) ) {
-			if ( wu ) {
-				for (j = 1; j <= events[i-wu][0]; j++) {
-					printf(",0");
+
+		for (j = 1; j <= events[i-warmedup][0]; j++) {
+			meas[j-1] = 0;
+			if ( PAPI_query_event(events[i-warmedup][j]) != PAPI_OK ) {
+				OK = false;
+			}
+		}
+
+		if ( !OK ) {
+			for (j = 1; j <= events[i-warmedup][0]; j++) {
+				if ( warmedup ) {
+					printf(",-");
 				}
 			}
 			continue;
 		}
+
+		PAPI_add_events(event_set, &events[i-warmedup][1], events[i-warmedup][0]);
 
 		if ( !time ) {
 			clock_gettime(CLOCK_REALTIME, &begin);
 		}
 
-		if ( PAPI_start(event_set) != PAPI_OK ) {
-			if ( wu ) {
-				for (j = 1; j <= events[i-wu][0]; j++) {
-					printf(",0");
-				}
-			}
-			continue;
-		};
+		PAPI_start(event_set);
 
 		for (j = 0; j < ups; j++) {
 			(fp)(up[MEASURE_IDX(ups, i, j)]);
@@ -155,37 +157,28 @@ int measure_with_sideeffects(char *test, char *name, char *size, testfunc fp,
 			}
 
 			total = total_s * 1e9 + total_ns;
-			if ( wu ) {
+			if ( warmedup ) {
 				printf(",%f", (double)total/ups);
 				time = true;
 			}
 		}
 
-		if ( wu ) {
-			for (j = 1; j <= events[i-wu][0]; j++) {
+		if ( warmedup ) {
+			for (j = 1; j <= events[i-warmedup][0]; j++) {
 				printf(",%lld", meas[j-1]/ups);
 			}
 		}
 
-		if ( PAPI_remove_events(event_set, &events[i-wu][1], events[i-wu][0]) ) {
-			return 0;
-		}
+		PAPI_cleanup_eventset(event_set);
 
-		wu = true;
-	}
-
-	if ( PAPI_cleanup_eventset(event_set) != PAPI_OK ) {
-		return 0;
-	}
-
-	if ( PAPI_destroy_eventset(&event_set) != PAPI_OK ) {
-		return 0;
+		warmedup = true;
 	}
 
 	printf("\n");
 
 	return 1;
 }
+
 
 __attribute__ ((visibility("default")))
 int measure_with_sideeffects_and_values(char *test, char *name, char *size, 
@@ -194,33 +187,36 @@ int measure_with_sideeffects_and_values(char *test, char *name, char *size,
 	uint64_t total_ns, total_s, total;
 	struct timespec begin, end;
 	bool time = false; 
-	bool wu   = false;
+	bool warmedup   = false;
+	bool OK   = true;
 
 	printf("%s,%s,%s", test, name, size);
 
-
 	for (i = 0; i <= N_EVENTS; i++) {
-		if ( PAPI_add_events(event_set, &events[i-wu][1], events[i-wu][0]) ) {
-			if ( wu ) {
-				for (j = 1; j <= events[i-wu][0]; j++) {
-					printf(",0");
+
+		for (j = 1; j <= events[i-warmedup][0]; j++) {
+			meas[j-1] = 0;
+			if ( PAPI_query_event(events[i-warmedup][j]) != PAPI_OK ) {
+				OK = false;
+			}
+		}
+
+		if ( !OK ) {
+			for (j = 1; j <= events[i-warmedup][0]; j++) {
+				if ( warmedup ) {
+					printf(",-");
 				}
 			}
 			continue;
 		}
+
+		PAPI_add_events(event_set, &events[i-warmedup][1], events[i-warmedup][0]);
 
 		if ( !time ) {
 			clock_gettime(CLOCK_REALTIME, &begin);
 		}
 
-		if ( PAPI_start(event_set) != PAPI_OK ) {
-			if ( wu ) {
-				for (j = 1; j <= events[i-wu][0]; j++) {
-					printf(",0");
-				}
-			}
-			continue;
-		};
+		PAPI_start(event_set);
 
 		for (j = 0; j < ups; j++) {
 			cleanup[MEASURE_IDX(ups, i, j)] = 
@@ -241,23 +237,21 @@ int measure_with_sideeffects_and_values(char *test, char *name, char *size,
 			}
 
 			total = total_s * 1e9 + total_ns;
-			if ( wu ) {
+			if ( warmedup ) {
 				printf(",%f", (double)total/ups);
 				time = true;
 			}
 		}
 
-		if ( wu ) {
-			for (j = 1; j <= events[i-wu][0]; j++) {
+		if ( warmedup ) {
+			for (j = 1; j <= events[i-warmedup][0]; j++) {
 				printf(",%lld", meas[j-1]/ups);
 			}
 		}
 
-		if ( PAPI_remove_events(event_set, &events[i-wu][1], events[i-wu][0]) ) {
-			return 0;
-		}
+		PAPI_cleanup_eventset(event_set);
 
-		wu = true;
+		warmedup = true;
 	}
 
 	printf("\n");
@@ -319,7 +313,7 @@ int measure_init() {
 	}
 
 	printf("Test,Name,Method,Nanoseconds");
-	for (i = 0; i < N_EVENTS; i++) {
+	for (i = 0; i < NUMBER_OF_EVENTS; i++) {
 		for (j = 1; j <= events[i][0]; j++) {
 			PAPI_event_code_to_name(events[i][j], buf);
 			printf(",%s", buf);
@@ -336,9 +330,6 @@ int measure_init() {
 
 __attribute__ ((visibility("default")))
 int measure_destroy() {
-	if ( PAPI_cleanup_eventset(event_set) != PAPI_OK ) {
-		return 0;
-	}
 
 	if ( PAPI_destroy_eventset(&event_set) != PAPI_OK ) {
 		return 0;
