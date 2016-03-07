@@ -7,14 +7,15 @@
 
 // Testfunction is the argument that needs to be tested. Should only take a
 // single argument.
-typedef void *(*testfunc)(void *, ...);
+typedef void *(*testfunc)(void *);
 
 int measure_init();
-int measure(char *test, char *name, char *testfile, testfunc fp, void *up, 
-		int ups);
-int measure_with_sideeffects(char *test, char* name, char *testfile, 
-		testfunc fp, void **up, int ups);
-int measure_with_sideeffects_and_values(char *test, char* name, char *testfile, 
-		testfunc fp, void **up, int ups, void **cleanup);
+int measure(char *restrict test, char *restrict name, char *restrict size, 
+		testfunc fp, void *restrict up, const int ups);
+int measure_with_sideeffects(char *restrict test, char *restrict name, 
+		char *restrict size, testfunc fp, void **restrict up, const int ups);
+int measure_with_sideeffects_and_values(char *restrict test, 
+		char *restrict name, char *restrict size, testfunc fp, 
+		void **restrict up, const int ups, void **restrict cleanup);
 int measure_destroy();
 #endif
