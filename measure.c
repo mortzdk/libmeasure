@@ -28,6 +28,7 @@ __attribute__ ((visibility("default")))
 int measure(char *restrict test, char *restrict name, char *restrict size, 
 		testfunc fp, void *restrict up, const int ups) {
 	uint8_t  i, j;
+	uint32_t idx;
 	uint64_t total_ns = 0, total_s = 0, total;
 	struct timespec begin, end;
 	bool time     = false; 
@@ -37,6 +38,7 @@ int measure(char *restrict test, char *restrict name, char *restrict size,
 	printf("%s,%s,%s", test, name, size);
 
 	for (i = 0; i < N_EVENTS; i++) {
+		idx = i - warmedup - time;
 		if ( warmedup && !time ) {
 			for (j = 0; j < ups; j++) {
 				clock_gettime(CLOCK_REALTIME, &begin);
@@ -57,15 +59,14 @@ int measure(char *restrict test, char *restrict name, char *restrict size,
 			continue;
 		}
 
-		for (j = 1; j <= events[i-warmedup-time][0]; j++) {
-			meas[j-1] = 0;
-			if ( PAPI_query_event(events[i-warmedup-time][j]) != PAPI_OK ) {
+		for (j = 1; j <= events[idx][0]; j++) {
+			if ( PAPI_query_event(events[idx][j]) != PAPI_OK ) {
 				OK = false;
 			}
 		}
 
 		if ( !OK ) {
-			for (j = 1; j <= events[i-warmedup-time][0]; j++) {
+			for (j = 1; j <= events[idx][0]; j++) {
 				if ( warmedup ) {
 					printf(",-");
 				}
@@ -73,10 +74,14 @@ int measure(char *restrict test, char *restrict name, char *restrict size,
 			continue;
 		}
 
+		for (j = 0; j < MAX_COUNTERS; j++) {
+			meas[j] = 0;
+		}
+
 		PAPI_add_events(
 				event_set, 
-				&events[i-warmedup-time][1], 
-				events[i-warmedup-time][0]
+				&events[idx][1], 
+				events[idx][0]
 		);
 
 		PAPI_start(event_set);
@@ -88,7 +93,7 @@ int measure(char *restrict test, char *restrict name, char *restrict size,
 		PAPI_stop(event_set, meas);
 
 		if ( warmedup ) {
-			for (j = 1; j <= events[i-warmedup-time][0]; j++) {
+			for (j = 1; j <= events[idx][0]; j++) {
 				printf(",%lld", meas[j-1]/ups);
 			}
 		}
@@ -107,6 +112,7 @@ __attribute__ ((visibility("default")))
 int measure_with_sideeffects(char *restrict test, char *restrict name, 
 		char *restrict size, testfunc fp, void **restrict up, const int ups) {
 	uint8_t  i, j;
+	uint32_t idx;
 	uint64_t total_ns = 0, total_s = 0, total;
 	struct timespec begin, end;
 	bool time     = false; 
@@ -116,6 +122,7 @@ int measure_with_sideeffects(char *restrict test, char *restrict name,
 	printf("%s,%s,%s", test, name, size);
 
 	for (i = 0; i < N_EVENTS; i++) {
+		idx = i - warmedup - time;
 		if ( warmedup && !time ) {
 			for (j = 0; j < ups; j++) {
 				clock_gettime(CLOCK_REALTIME, &begin);
@@ -136,15 +143,14 @@ int measure_with_sideeffects(char *restrict test, char *restrict name,
 			continue;
 		}
 
-		for (j = 1; j <= events[i-warmedup-time][0]; j++) {
-			meas[j-1] = 0;
-			if ( PAPI_query_event(events[i-warmedup-time][j]) != PAPI_OK ) {
+		for (j = 1; j <= events[idx][0]; j++) {
+			if ( PAPI_query_event(events[idx][j]) != PAPI_OK ) {
 				OK = false;
 			}
 		}
 
 		if ( !OK ) {
-			for (j = 1; j <= events[i-warmedup-time][0]; j++) {
+			for (j = 1; j <= events[idx][0]; j++) {
 				if ( warmedup ) {
 					printf(",-");
 				}
@@ -152,10 +158,14 @@ int measure_with_sideeffects(char *restrict test, char *restrict name,
 			continue;
 		}
 
+		for (j = 0; j < MAX_COUNTERS; j++) {
+			meas[j] = 0;
+		}
+
 		PAPI_add_events(
 				event_set, 
-				&events[i-warmedup-time][1], 
-				events[i-warmedup-time][0]
+				&events[idx][1], 
+				events[idx][0]
 		);
 
 		PAPI_start(event_set);
@@ -167,7 +177,7 @@ int measure_with_sideeffects(char *restrict test, char *restrict name,
 		PAPI_stop(event_set, meas);
 
 		if ( warmedup ) {
-			for (j = 1; j <= events[i-warmedup-time][0]; j++) {
+			for (j = 1; j <= events[idx][0]; j++) {
 				printf(",%lld", meas[j-1]/ups);
 			}
 		}
@@ -188,6 +198,7 @@ int measure_with_sideeffects_and_values(char *restrict test,
 		char *restrict name, char *restrict size, testfunc fp, 
 		void **restrict up, const int ups, void **restrict cleanup) {
 	uint8_t  i, j;
+	uint32_t idx;
 	uint64_t total_ns = 0, total_s = 0, total;
 	struct timespec begin, end;
 	bool time     = false; 
@@ -197,6 +208,7 @@ int measure_with_sideeffects_and_values(char *restrict test,
 	printf("%s,%s,%s", test, name, size);
 
 	for (i = 0; i < N_EVENTS; i++) {
+		idx = i - warmedup - time;
 		if ( warmedup && !time ) {
 			for (j = 0; j < ups; j++) {
 				clock_gettime(CLOCK_REALTIME, &begin);
@@ -218,15 +230,14 @@ int measure_with_sideeffects_and_values(char *restrict test,
 			continue;
 		}
 
-		for (j = 1; j <= events[i-warmedup-time][0]; j++) {
-			meas[j-1] = 0;
-			if ( PAPI_query_event(events[i-warmedup-time][j]) != PAPI_OK ) {
+		for (j = 1; j <= events[idx][0]; j++) {
+			if ( PAPI_query_event(events[idx][j]) != PAPI_OK ) {
 				OK = false;
 			}
 		}
 
 		if ( !OK ) {
-			for (j = 1; j <= events[i-warmedup-time][0]; j++) {
+			for (j = 1; j <= events[idx][0]; j++) {
 				if ( warmedup ) {
 					printf(",-");
 				}
@@ -234,10 +245,14 @@ int measure_with_sideeffects_and_values(char *restrict test,
 			continue;
 		}
 
+		for (j = 0; j < MAX_COUNTERS; j++) {
+			meas[j] = 0;
+		}
+
 		PAPI_add_events(
 				event_set, 
-				&events[i-warmedup-time][1], 
-				events[i-warmedup-time][0]
+				&events[idx][1], 
+				events[idx][0]
 		);
 
 		PAPI_start(event_set);
@@ -250,7 +265,7 @@ int measure_with_sideeffects_and_values(char *restrict test,
 		PAPI_stop(event_set, meas);
 
 		if ( warmedup ) {
-			for (j = 1; j <= events[i-warmedup-time][0]; j++) {
+			for (j = 1; j <= events[idx][0]; j++) {
 				printf(",%lld", meas[j-1]/ups);
 			}
 		}
