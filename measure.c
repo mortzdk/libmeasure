@@ -329,7 +329,7 @@ int measure_init(char *filename) {
 	events[10][0] = 1;
 	events[10][1] = PAPI_REF_CYC;
 
-	if ( (fd = fopen(filename, "w")) == NULL ) {
+	if ( (fd = fopen(filename, "a")) == NULL ) {
 		return 0;
 	}
 
