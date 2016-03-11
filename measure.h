@@ -9,7 +9,7 @@
 // single argument.
 typedef void *(*testfunc)(void *);
 
-int measure_init();
+int measure_init(char *filename);
 int measure(char *restrict test, char *restrict name, char *restrict size, 
 		testfunc fp, void *restrict up, const int ups);
 int measure_with_sideeffects(char *restrict test, char *restrict name, 

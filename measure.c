@@ -23,6 +23,7 @@ const int N_EVENTS                  = NUMBER_OF_EVENTS+2;
 static int events[NUMBER_OF_EVENTS][MAX_COUNTERS+1];
 static long long meas[MAX_COUNTERS] = {0, 0};
 static int event_set                = PAPI_NULL;
+static FILE *fd;
 
 __attribute__ ((visibility("default")))
 int measure(char *restrict test, char *restrict name, char *restrict size, 
@@ -35,7 +36,7 @@ int measure(char *restrict test, char *restrict name, char *restrict size,
 	bool warmedup = false;
 	bool OK       = true;
 
-	printf("%s,%s,%s", test, name, size);
+	fprintf(fd, "%s,%s,%s", test, name, size);
 
 	for (i = 0; i < N_EVENTS; i++) {
 		idx = i - warmedup - time;
@@ -54,7 +55,7 @@ int measure(char *restrict test, char *restrict name, char *restrict size,
 			}
 
 			total = total_s * 1e9 + total_ns;
-			printf(",%f", (double)total/ups);
+			fprintf(fd, ",%f", (double)total/ups);
 			time = true;
 			continue;
 		}
@@ -68,7 +69,7 @@ int measure(char *restrict test, char *restrict name, char *restrict size,
 		if ( !OK ) {
 			for (j = 1; j <= events[idx][0]; j++) {
 				if ( warmedup ) {
-					printf(",-");
+					fprintf(fd, ",-");
 				}
 			}
 			continue;
@@ -94,7 +95,7 @@ int measure(char *restrict test, char *restrict name, char *restrict size,
 
 		if ( warmedup ) {
 			for (j = 1; j <= events[idx][0]; j++) {
-				printf(",%lld", meas[j-1]/ups);
+				fprintf(fd, ",%lld", meas[j-1]/ups);
 			}
 		}
 
@@ -103,7 +104,7 @@ int measure(char *restrict test, char *restrict name, char *restrict size,
 		warmedup = true;
 	}
 
-	printf("\n");
+	fprintf(fd, "\n");
 
 	return 1;
 }
@@ -119,7 +120,7 @@ int measure_with_sideeffects(char *restrict test, char *restrict name,
 	bool warmedup = false;
 	bool OK       = true;
 
-	printf("%s,%s,%s", test, name, size);
+	fprintf(fd, "%s,%s,%s", test, name, size);
 
 	for (i = 0; i < N_EVENTS; i++) {
 		idx = i - warmedup - time;
@@ -138,7 +139,7 @@ int measure_with_sideeffects(char *restrict test, char *restrict name,
 			}
 
 			total = total_s * 1e9 + total_ns;
-			printf(",%f", (double)total/ups);
+			fprintf(fd, ",%f", (double)total/ups);
 			time = true;
 			continue;
 		}
@@ -152,7 +153,7 @@ int measure_with_sideeffects(char *restrict test, char *restrict name,
 		if ( !OK ) {
 			for (j = 1; j <= events[idx][0]; j++) {
 				if ( warmedup ) {
-					printf(",-");
+					fprintf(fd, ",-");
 				}
 			}
 			continue;
@@ -178,7 +179,7 @@ int measure_with_sideeffects(char *restrict test, char *restrict name,
 
 		if ( warmedup ) {
 			for (j = 1; j <= events[idx][0]; j++) {
-				printf(",%lld", meas[j-1]/ups);
+				fprintf(fd, ",%lld", meas[j-1]/ups);
 			}
 		}
 
@@ -187,7 +188,7 @@ int measure_with_sideeffects(char *restrict test, char *restrict name,
 		warmedup = true;
 	}
 
-	printf("\n");
+	fprintf(fd, "\n");
 
 	return 1;
 }
@@ -205,7 +206,7 @@ int measure_with_sideeffects_and_values(char *restrict test,
 	bool warmedup = false;
 	bool OK       = true;
 
-	printf("%s,%s,%s", test, name, size);
+	fprintf(fd, "%s,%s,%s", test, name, size);
 
 	for (i = 0; i < N_EVENTS; i++) {
 		idx = i - warmedup - time;
@@ -225,7 +226,7 @@ int measure_with_sideeffects_and_values(char *restrict test,
 			}
 
 			total = total_s * 1e9 + total_ns;
-			printf(",%f", (double)total/ups);
+			fprintf(fd, ",%f", (double)total/ups);
 			time = true;
 			continue;
 		}
@@ -239,7 +240,7 @@ int measure_with_sideeffects_and_values(char *restrict test,
 		if ( !OK ) {
 			for (j = 1; j <= events[idx][0]; j++) {
 				if ( warmedup ) {
-					printf(",-");
+					fprintf(fd, ",-");
 				}
 			}
 			continue;
@@ -266,7 +267,7 @@ int measure_with_sideeffects_and_values(char *restrict test,
 
 		if ( warmedup ) {
 			for (j = 1; j <= events[idx][0]; j++) {
-				printf(",%lld", meas[j-1]/ups);
+				fprintf(fd, ",%lld", meas[j-1]/ups);
 			}
 		}
 
@@ -275,13 +276,13 @@ int measure_with_sideeffects_and_values(char *restrict test,
 		warmedup = true;
 	}
 
-	printf("\n");
+	fprintf(fd, "\n");
 
 	return 1;
 }
 
 __attribute__ ((visibility("default")))
-int measure_init() {
+int measure_init(char *filename) {
 	uint8_t i, j;
 	char buf[1024];
 	
@@ -333,24 +334,32 @@ int measure_init() {
 		return 0;
 	}
 
-	printf("Test,Name,Method,Nanoseconds");
+	fprintf(fd, "Test,Name,Method,Nanoseconds");
 	for (i = 0; i < NUMBER_OF_EVENTS; i++) {
 		for (j = 1; j <= events[i][0]; j++) {
 			PAPI_event_code_to_name(events[i][j], buf);
-			printf(",%s", buf);
+			fprintf(fd, ",%s", buf);
 		}
 	}
-	printf("\n");
+	fprintf(fd, "\n");
 
 	if ( PAPI_create_eventset(&event_set) != PAPI_OK) {
 		return 0;
 	}
+
+	if ( (fd = fopen(filename, "w")) == NULL ) {
+		return 0;
+	}
+
 
 	return 1;
 }
 
 __attribute__ ((visibility("default")))
 int measure_destroy() {
+	if ( fclose(fd) != 0 ) {
+		return 0;
+	}
 
 	if ( PAPI_destroy_eventset(&event_set) != PAPI_OK ) {
 		return 0;
