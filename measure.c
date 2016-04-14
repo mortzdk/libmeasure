@@ -72,6 +72,7 @@ int measure(char *restrict test, char *restrict name, char *restrict size,
 					fprintf(fd, ",-");
 				}
 			}
+			OK = true;
 			continue;
 		}
 
@@ -156,6 +157,7 @@ int measure_with_sideeffects(char *restrict test, char *restrict name,
 					fprintf(fd, ",-");
 				}
 			}
+			OK = true;
 			continue;
 		}
 
@@ -243,6 +245,7 @@ int measure_with_sideeffects_and_values(char *restrict test,
 					fprintf(fd, ",-");
 				}
 			}
+			OK = true;
 			continue;
 		}
 
