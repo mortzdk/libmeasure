@@ -15,13 +15,13 @@
 
 #include "measure.h"
 
-#define NUMBER_OF_EVENTS 11
-#define MAX_COUNTERS     2
+#define NUMBER_OF_EVENTS 10
+#define MAX_COUNTERS     3
 
 __attribute__ ((visibility("default"))) 
 const int N_EVENTS                  = NUMBER_OF_EVENTS+2;
 static int events[NUMBER_OF_EVENTS][MAX_COUNTERS+1];
-static long long meas[MAX_COUNTERS] = {0, 0};
+static long long meas[MAX_COUNTERS] = {0, 0, 0};
 static int event_set                = PAPI_NULL;
 static FILE *fd;
 
@@ -289,45 +289,43 @@ int measure_init(char *filename) {
 	events[0][0] = MAX_COUNTERS;
 	events[0][1] = PAPI_TOT_INS;
 	events[0][2] = PAPI_TOT_CYC;
+	events[0][3] = PAPI_REF_CYC;
 
-	events[1][0] = MAX_COUNTERS;
+	events[1][0] = 2;
 	events[1][1] = PAPI_BR_NTK;
 	events[1][2] = PAPI_BR_TKN;
 
-	events[2][0] = MAX_COUNTERS;
+	events[2][0] = 2;
 	events[2][1] = PAPI_BR_MSP;
 	events[2][2] = PAPI_BR_PRC;
 
-	events[3][0] = MAX_COUNTERS;
+	events[3][0] = 2;
 	events[3][1] = PAPI_L1_DCM;
 	events[3][2] = PAPI_L1_ICM;
 
-	events[3][0] = MAX_COUNTERS;
+	events[3][0] = 2;
 	events[3][1] = PAPI_L1_DCM;
 	events[3][2] = PAPI_L1_ICM;
 
-	events[4][0] = MAX_COUNTERS;
+	events[4][0] = 2;
 	events[4][1] = PAPI_L2_DCM;
 	events[4][2] = PAPI_L2_ICM;
 
-	events[5][0] = MAX_COUNTERS;
+	events[5][0] = 2;
 	events[5][1] = PAPI_TLB_DM;
 	events[5][2] = PAPI_TLB_IM;
 
 	events[6][0] = 1;
-	events[6][1] = PAPI_L1_DCH;
+	events[6][1] = PAPI_L1_DCA;
 
 	events[7][0] = 1;
-	events[7][1] = PAPI_L2_DCH;
+	events[7][1] = PAPI_L2_DCA;
 
 	events[8][0] = 1;
-	events[8][1] = PAPI_L1_ICH;
+	events[8][1] = PAPI_L1_ICA;
 
 	events[9][0] = 1;
-	events[9][1] = PAPI_L2_ICH;
-
-	events[10][0] = 1;
-	events[10][1] = PAPI_REF_CYC;
+	events[9][1] = PAPI_L2_ICA;
 
 	if ( (fd = fopen(filename, "a")) == NULL ) {
 		return 0;
