@@ -22,6 +22,7 @@ __attribute__ ((visibility("default")))
 const int N_EVENTS                  = NUMBER_OF_EVENTS+2;
 static int events[NUMBER_OF_EVENTS][MAX_COUNTERS+1];
 static long long meas[MAX_COUNTERS] = {0, 0, 0};
+static long long cnt[MAX_COUNTERS] = {0, 0, 0};
 static int event_set                = PAPI_NULL;
 static FILE *fd;
 
@@ -78,6 +79,7 @@ int measure(char *restrict test, char *restrict name, char *restrict size,
 
 		for (j = 0; j < MAX_COUNTERS; j++) {
 			meas[j] = 0;
+			cnt[j] = 0;
 		}
 
 		PAPI_add_events(
@@ -86,17 +88,21 @@ int measure(char *restrict test, char *restrict name, char *restrict size,
 				events[idx][0]
 		);
 
-		PAPI_start(event_set);
-
 		for (j = 0; j < ups; j++) {
+			PAPI_start(event_set);
 			(fp)(up);
-		}
+			PAPI_stop(event_set, meas);
 
-		PAPI_stop(event_set, meas);
+			for (j = 1; j <= events[idx][0]; j++) {
+				cnt[j-1] += meas[j-1];
+			}
+
+			PAPI_reset(event_set);
+		}
 
 		if ( warmedup ) {
 			for (j = 1; j <= events[idx][0]; j++) {
-				fprintf(fd, ",%lld", meas[j-1]/ups);
+				fprintf(fd, ",%f", (double)cnt[j-1]/ups);
 			}
 		}
 
@@ -163,6 +169,7 @@ int measure_with_sideeffects(char *restrict test, char *restrict name,
 
 		for (j = 0; j < MAX_COUNTERS; j++) {
 			meas[j] = 0;
+			cnt[j] = 0;
 		}
 
 		PAPI_add_events(
@@ -171,17 +178,21 @@ int measure_with_sideeffects(char *restrict test, char *restrict name,
 				events[idx][0]
 		);
 
-		PAPI_start(event_set);
-
 		for (j = 0; j < ups; j++) {
+			PAPI_start(event_set);
 			(fp)(up[MEASURE_IDX(ups, i, j)]);
-		}
+			PAPI_stop(event_set, meas);
 
-		PAPI_stop(event_set, meas);
+			for (j = 1; j <= events[idx][0]; j++) {
+				cnt[j-1] += meas[j-1];
+			}
+
+			PAPI_reset(event_set);
+		}
 
 		if ( warmedup ) {
 			for (j = 1; j <= events[idx][0]; j++) {
-				fprintf(fd, ",%lld", meas[j-1]/ups);
+				fprintf(fd, ",%f", (double)cnt[j-1]/ups);
 			}
 		}
 
@@ -251,6 +262,7 @@ int measure_with_sideeffects_and_values(char *restrict test,
 
 		for (j = 0; j < MAX_COUNTERS; j++) {
 			meas[j] = 0;
+			cnt[j] = 0;
 		}
 
 		PAPI_add_events(
@@ -259,18 +271,22 @@ int measure_with_sideeffects_and_values(char *restrict test,
 				events[idx][0]
 		);
 
-		PAPI_start(event_set);
-
 		for (j = 0; j < ups; j++) {
+			PAPI_start(event_set);
+
 			cleanup[MEASURE_IDX(ups, i, j)] = 
 				(fp)(up[MEASURE_IDX(ups, i, j)]);
-		}
 
-		PAPI_stop(event_set, meas);
+			PAPI_stop(event_set, meas);
+			for (j = 1; j <= events[idx][0]; j++) {
+				cnt[j-1] += meas[j-1];
+			}
+			PAPI_reset(event_set);
+		}
 
 		if ( warmedup ) {
 			for (j = 1; j <= events[idx][0]; j++) {
-				fprintf(fd, ",%lld", meas[j-1]/ups);
+				fprintf(fd, ",%f", (double)cnt[j-1]/ups);
 			}
 		}
 
