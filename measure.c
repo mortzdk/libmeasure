@@ -29,7 +29,7 @@ static FILE *fd;
 __attribute__ ((visibility("default")))
 int measure(char *restrict test, char *restrict name, char *restrict size, 
 		testfunc fp, void *restrict up, const int ups) {
-	uint8_t  i, j;
+	uint8_t  i, j, k;
 	uint32_t idx;
 	uint64_t total_ns = 0, total_s = 0, total;
 	struct timespec begin, end;
@@ -93,8 +93,8 @@ int measure(char *restrict test, char *restrict name, char *restrict size,
 			(fp)(up);
 			PAPI_stop(event_set, meas);
 
-			for (j = 1; j <= events[idx][0]; j++) {
-				cnt[j-1] += meas[j-1];
+			for (k = 1; k <= events[idx][0]; k++) {
+				cnt[j-1] += meas[k-1];
 			}
 
 			PAPI_reset(event_set);
@@ -119,7 +119,7 @@ int measure(char *restrict test, char *restrict name, char *restrict size,
 __attribute__ ((visibility("default")))
 int measure_with_sideeffects(char *restrict test, char *restrict name, 
 		char *restrict size, testfunc fp, void **restrict up, const int ups) {
-	uint8_t  i, j;
+	uint8_t  i, j, k;
 	uint32_t idx;
 	uint64_t total_ns = 0, total_s = 0, total;
 	struct timespec begin, end;
@@ -183,8 +183,8 @@ int measure_with_sideeffects(char *restrict test, char *restrict name,
 			(fp)(up[MEASURE_IDX(ups, i, j)]);
 			PAPI_stop(event_set, meas);
 
-			for (j = 1; j <= events[idx][0]; j++) {
-				cnt[j-1] += meas[j-1];
+			for (k = 1; k <= events[idx][0]; k++) {
+				cnt[k-1] += meas[k-1];
 			}
 
 			PAPI_reset(event_set);
@@ -211,7 +211,7 @@ __attribute__ ((visibility("default")))
 int measure_with_sideeffects_and_values(char *restrict test, 
 		char *restrict name, char *restrict size, testfunc fp, 
 		void **restrict up, const int ups, void **restrict cleanup) {
-	uint8_t  i, j;
+	uint8_t  i, j, k;
 	uint32_t idx;
 	uint64_t total_ns = 0, total_s = 0, total;
 	struct timespec begin, end;
@@ -278,8 +278,8 @@ int measure_with_sideeffects_and_values(char *restrict test,
 				(fp)(up[MEASURE_IDX(ups, i, j)]);
 
 			PAPI_stop(event_set, meas);
-			for (j = 1; j <= events[idx][0]; j++) {
-				cnt[j-1] += meas[j-1];
+			for (k = 1; k <= events[idx][0]; k++) {
+				cnt[k-1] += meas[k-1];
 			}
 			PAPI_reset(event_set);
 		}
